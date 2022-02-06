@@ -93,7 +93,7 @@ export function sendAnalytics(
             eventValue: value,
         };
         debug('ga', event);
-        
+
         try {
             window.ga('send', event);
         } catch (err) {
@@ -105,23 +105,21 @@ export function sendAnalytics(
 }
 
 export function initGoogleAnalytics(userId: string) {
-    const ga = window.ga;
-
     debug('analytics setting user id to', userId);
 
     try {
         window.ga =
             window.ga ||
             function () {
-                (ga.q = ga.q || []).push(arguments);
+                (window.ga.q = window.ga.q || []).push(arguments);
             };
-        ga.l = +new Date();
-        ga('create', 'UA-120927255-3', {
+        window.ga.l = +new Date();
+        window.ga('create', 'UA-120927255-3', {
             storage: 'none',
             clientId: userId,
         });
-        ga('set', 'transport', 'beacon');
-        ga('send', 'pageview');
+        window.ga('set', 'transport', 'beacon');
+        window.ga('send', 'pageview');
     } catch (err) {
         debug('failed initializing google analytics', err);
     }
