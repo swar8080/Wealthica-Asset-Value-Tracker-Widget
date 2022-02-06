@@ -1,16 +1,12 @@
 import get from 'lodash/get';
-import has from 'lodash/has';
 import { WidgetStorage } from '../../types';
+import { initGoogleAnalytics, logAPIError, sendAnalytics } from '../../util/analytics';
 import { debug } from '../../util/env';
 import wealthica from '../wealthica';
-import {
-    getAddonPreferences,
-    saveAddonStorage,
-    setInternalWealthicaPreferenceId,
-} from '../WealthicaApi';
+import { getAddonPreferences, setInternalWealthicaPreferenceId } from '../WealthicaApi';
 
 const STANDALONE_PAGE_USER_ID_PATH = 'authUser.id';
-const KNOWN_PREFERENCE_KEYS = new Set(['url']);
+const EXPECTED_PREFERNECE_KEY_PATTERN = new RegExp(/[a-zA-Z0-9]{32}/);
 
 /**
  * The standalone/add-on page and dashboard/widget do not share the same storage.
@@ -25,9 +21,8 @@ const KNOWN_PREFERENCE_KEYS = new Set(['url']);
  * This code generates/finds the preference id so that the preference API can actually be used.
  */
 export default async function initializeWidgetStorage(initState: any): Promise<WidgetStorage> {
-    let { wealthicaPreferenceId, storage } = await initialize(initState);
+    const { wealthicaPreferenceId, storage } = await initialize(initState);
     setInternalWealthicaPreferenceId(wealthicaPreferenceId);
-    storage = await storeUserId(storage, initState);
 
     return storage;
 }
@@ -54,16 +49,24 @@ async function initialize(
         return { wealthicaPreferenceId, storage };
     }
 
-    //can't generate the preference id on the dashboard 
-    //since the call to saveData() will generate a preference for the dashboard's storage instead of the standalone page's
-    //the user needs to visit the standalone page one time to complete the bootstrapping
-    const isDashboard = !has(initState, STANDALONE_PAGE_USER_ID_PATH);
-    if (isDashboard) {
+    const userId = get(initState, STANDALONE_PAGE_USER_ID_PATH);
+    if (!userId) {
+        /**
+         * User is on the dashboard (since user id is only set on the standalone page).
+         *
+         * At this point the dashboard widget cannot generate the preference id
+         * since the call to saveData() will generate a preference for the dashboard's storage instead of the standalone page's.
+         *
+         * The user needs to visit the standalone page one time to complete the bootstrapping.
+         */
         debug(
             'initialize storage: a visit to the standalone page is required to bootstrap shared storage'
         );
+        initGoogleAnalytics('unknown');
         throw new StandalonePageVisitRequiredError();
     }
+
+    initGoogleAnalytics(userId);
 
     debug('initialize storage: bootstrapping');
 
@@ -73,11 +76,21 @@ async function initialize(
         assetsById: {},
         userId: get(initState, STANDALONE_PAGE_USER_ID_PATH, undefined),
     };
-    await wealthica().saveData(initialStorage);
+    await logAPIError(wealthica().saveData(initialStorage));
 
     //fetch the generated preference id
-    wealthicaPreference = await getAddonPreferences();
+    wealthicaPreference = await logAPIError(getAddonPreferences());
     wealthicaPreferenceId = findWealthicaPreferenceId(wealthicaPreference);
+
+    if (!wealthicaPreferenceId) {
+        debug('failed to initialize preference id', wealthicaPreference);
+        sendAnalytics(
+            'Error',
+            'Initialize preference id',
+            Object.keys(wealthicaPreference || {}).join('|')
+        );
+        throw new Error('Failed to initialize preference id');
+    }
 
     debug('initialize storage: preference after bootstrapping', wealthicaPreference);
 
@@ -86,33 +99,21 @@ async function initialize(
         ...initialStorage,
         wealthicaPreferenceId,
     };
-    await wealthica().saveData(bootstrappedStorage);
+    await logAPIError(wealthica().saveData(bootstrappedStorage));
 
     return { wealthicaPreferenceId, storage: bootstrappedStorage };
 }
 
-/**
- * userId is only available on the add-on/standalone page,
- * so it may not be persisted to storage yet if the user has only visited the dashboard so far.
- */
-async function storeUserId(storage: WidgetStorage, initiState: any): Promise<WidgetStorage> {
-    const userId: string | undefined = get(initiState, STANDALONE_PAGE_USER_ID_PATH);
-    if (userId && !storage.userId) {
-        storage = {
-            ...storage,
-            userId,
-        };
-        debug('storing user id');
-        await saveAddonStorage(storage);
-    }
-    return storage;
-}
-
 function findWealthicaPreferenceId(preferenceData: any): string | '' {
+    let preferenceId: string | undefined = undefined;
+
     if (preferenceData) {
-        return Object.keys(preferenceData).find((key) => !KNOWN_PREFERENCE_KEYS.has(key)) || '';
+        preferenceId = Object.keys(preferenceData).find((key) =>
+            EXPECTED_PREFERNECE_KEY_PATTERN.test(key)
+        );
     }
-    return '';
+
+    return preferenceId || '';
 }
 
 export class StandalonePageVisitRequiredError extends Error {}

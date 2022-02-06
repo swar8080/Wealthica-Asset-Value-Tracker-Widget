@@ -27,29 +27,34 @@ async function logAnalyticsAsync(action: Action, newState: State) {
             if (!hasDetectedPageSize) {
                 hasDetectedPageSize = true;
                 const pageType = action.isDashboard ? 'Dashboard' : 'Standalone';
-                return send('Viewing', 'Page Type', pageType, action.width);
+                return sendAnalytics('Viewing', 'Page Type', pageType, action.width);
             }
             break;
         }
 
         case 'CHANGE_SCREEN': {
-            return send('Navigation', 'Change screen', action.screen);
+            return sendAnalytics('Navigation', 'Change screen', action.screen);
         }
 
         case 'FORCE_SYNC_ASSETS': {
-            return send('Syncing', 'Force');
+            return sendAnalytics('Syncing', 'Force');
         }
 
         case 'CREATING_ASSET': {
-            return send('Asset', 'Creating');
+            return sendAnalytics('Asset', 'Creating');
         }
 
         case 'CREATED_ASSET': {
-            return send('Asset', 'Created', action.asset.id, action.asset.structure.durationInDays);
+            return sendAnalytics(
+                'Asset',
+                'Created',
+                action.asset.id,
+                action.asset.structure.durationInDays
+            );
         }
 
         case 'STANDALONE_PAGE_VISIT_REQUIRED': {
-            return send('Navigation', 'Standalone visit required');
+            return sendAnalytics('Navigation', 'Standalone visit required');
         }
     }
 }
@@ -63,7 +68,7 @@ export function logAPIError<T>(result: Promise<T>): Promise<T> {
 
         if (method && path) {
             try {
-                send('Error', `${method}_${path}`, errorMessage, statusCode);
+                sendAnalytics('Error', `${method}_${path}`, errorMessage, statusCode);
             } catch (gaErr) {
                 console.error('Error sending analytics', gaErr);
             }
@@ -73,7 +78,7 @@ export function logAPIError<T>(result: Promise<T>): Promise<T> {
     });
 }
 
-function send(
+export function sendAnalytics(
     category: CATEGORY,
     action: string,
     label: string | undefined = undefined,
@@ -88,27 +93,36 @@ function send(
             eventValue: value,
         };
         debug('ga', event);
-        window.ga('send', event);
+        
+        try {
+            window.ga('send', event);
+        } catch (err) {
+            debug('ga event failed', err);
+        }
     }
 
     return null;
 }
 
-function initGoogleAnalytics(userId: string) {
+export function initGoogleAnalytics(userId: string) {
     const ga = window.ga;
 
     debug('analytics setting user id to', userId);
 
-    window.ga =
-        window.ga ||
-        function () {
-            (ga.q = ga.q || []).push(arguments);
-        };
-    ga.l = +new Date();
-    ga('create', 'UA-120927255-3', {
-        storage: 'none',
-        clientId: userId,
-    });
-    ga('set', 'transport', 'beacon');
-    ga('send', 'pageview');
+    try {
+        window.ga =
+            window.ga ||
+            function () {
+                (ga.q = ga.q || []).push(arguments);
+            };
+        ga.l = +new Date();
+        ga('create', 'UA-120927255-3', {
+            storage: 'none',
+            clientId: userId,
+        });
+        ga('set', 'transport', 'beacon');
+        ga('send', 'pageview');
+    } catch (err) {
+        debug('failed initializing google analytics', err);
+    }
 }

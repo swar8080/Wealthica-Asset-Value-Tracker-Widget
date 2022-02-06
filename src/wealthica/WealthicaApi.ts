@@ -83,11 +83,10 @@ export function setInternalWealthicaPreferenceId(value: string) {
 }
 
 export function saveAddonStorage(storage: WidgetStorage): Promise<any> {
-    if (!_internalWealthicaPreferenceId)
-    {
-        throw new Error('Wealthica preference must be initialized before saving to add-on storage')
+    if (!_internalWealthicaPreferenceId) {
+        throw new Error('Wealthica preference must be initialized before saving to add-on storage');
     }
-    
+
     const preferencePayload = {
         url: window.location.href,
         [_internalWealthicaPreferenceId]: storage,
