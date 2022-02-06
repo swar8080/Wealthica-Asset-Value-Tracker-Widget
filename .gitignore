@@ -1,0 +1,8 @@
+node_modules/*
+build/*
+ignore/*
+public/ignore/*
+.idea/*
+.DS_Store
+.env.local
+.env.development.local

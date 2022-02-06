@@ -1,0 +1,8 @@
+export const WEALTHICA_LIGHT_PURPLE = '#7c2dd4';
+export const WEALTHICA_HOVER_PURPLE = '#6323ab';
+
+export const WEALTHICA_DASHBOARD_CONTENT_HEIGHT = 240;
+export const NAVIGATION_CONTAINER_HEIGHT_DASHBOARD = 24;
+export const DASHBOARD_BORDER_STYLE = '1px lightgrey dotted';
+
+export const STANDALONE_CONTAINER_WIDTH = '60%';
