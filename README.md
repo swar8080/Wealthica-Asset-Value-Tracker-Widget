@@ -19,12 +19,13 @@ By default, compound interest is used. Also supported is interest that is re-inv
 
 ## Using the widget
 
-1. On Wealthica, install the [developer add-on](https://app.wealthica.com/addons/details?id=wealthica%2Fwealthica-dev-addon)
-2. Visit the developer add-on power-ups page or add the add-on to your dashboard
+1. On Wealthica, install the [Developer Add-on](https://app.wealthica.com/addons/details?id=wealthica%2Fwealthica-dev-addon)
+2. Visit the Developer Add-on [power-up page](https://app.wealthica.com/addons/wealthica/wealthica-dev-addon)
 3. Click the gear icon to the right of add-on title, and then "Configure"
 4. Enter the URL of the widget:
    1. https://d15ybym44m0zut.cloudfront.net to use a version hosted on AWS
    2. https://localhost:3000 if you're paranoid and want to run the widget locally 😀 (details below)
+5. On the Wealthica dashboard, add the Developer Add-on widget and configure the same URL
 
 ![Adding the widget on wealthica.com](https://i.imgur.com/9kF5LWd.png)
 
